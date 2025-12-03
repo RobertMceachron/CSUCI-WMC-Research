@@ -1,8 +1,8 @@
 library(tidyverse) # Data Mutability
 library(readxl) # Reads XLSX Files
 library(car) # Homogeneity Tests
-library(ggrain)
-
+library(ggrain) # Rainplots for GGPlot
+library(rsample) # Splitting Data 
 
 WSEdata <- read_excel("data/WSE_data.xlsx")
 TUTdata <- read.csv("data/EXP_List.csv")
@@ -31,10 +31,13 @@ TUTdata <- read.csv("data/EXP_List.csv")
     data$EXP <- as.numeric(data$EXP)
     data$EXP[is.na(data$EXP)] <- 0
 
+  # Computes Change In Scores
+    data$WSEChange <- data$PostScore - data$PreScore
 
 #################
 # Data Analysis #
 #################
+    
 # Descriptive Statistics
 ##################################
   # Gender Plot
@@ -65,7 +68,6 @@ TUTdata <- read.csv("data/EXP_List.csv")
           geom_density(fill="#ffcccc", color="black", alpha=0.8)
       
     # Homogeneity of Variance
-
         
   # Visualizations
   ################
@@ -77,13 +79,12 @@ TUTdata <- read.csv("data/EXP_List.csv")
     
     # Plot #1 (LamePlot)
       ggplot(long_data, aes(x = ScoreType, y = Score)) +
-        geom_point(aes(color = as.factor(ResponseId)), size = 3) +
-        geom_line(aes(group = ResponseId, color = as.factor(ResponseId)), size = 1) +
+        geom_point(aes(color = as.factor(EXP)), size = 3) +
+        geom_line(aes(group = ResponseId, color = as.factor(EXP)), size = 1) +
         labs(title = "Score Changes from Pre to Post",
              x = "Score Type",
              y = "Score") +
-        theme_minimal() +
-        theme(legend.position = "none")
+        theme_minimal()
 
     # Plot #2 (RainPlot)
       ggplot(long_data[long_data$ScoreType %in% c('PostScore', 'PreScore'),], 
@@ -93,22 +94,39 @@ TUTdata <- read.csv("data/EXP_List.csv")
         scale_fill_manual(values=c("#ff503d", "dodgerblue")) +
         guides(fill = 'none', color = 'none') +
         labs(x = "Writing Self-Efficacy Scores", 
-             y = "Score", 
-             title = "Writing Self-Efficacy Before & After a Tutoring Session") + 
+             y = "Score") + 
         theme(plot.background = element_rect(fill = "#E8E8E8"), 
-              panel.background = element_rect(fill = "#ebe6e6"))
-      # Add this in when we get more data    
+              panel.background = element_rect(fill = "#ebe6e6")) 
+        # Add this in when we get more data    
         stat_summary(fun = mean, geom = "line", aes(group = EXP, color = EXP)) 
+        
+     # Plot #3 (BarChart of Exp)
+        ggplot(data, aes(as.factor(EXP), WSEChange, fill = as.factor(EXP))) +
+          geom_bar(stat = "identity") + 
+          labs(x = "Tutor Experience (Semesters)", y = "Mean WSE Change") + 
+          guides(fill = 'none', color = 'none') + 
+          theme_classic() +
+          theme(plot.background = element_rect(fill = "#E8E8E8"), 
+                panel.background = element_rect(fill = "#ebe6e6")) 
+          
         
         
 # Hypothesis #2 (Moderator of EXP)
 ##################################
   # Moderation Analysis
-    model <- lm(data$PostScore ~ data$EXP + data$PreScore:data$EXP, data = data)
-    summary(model)
+      model <- lm(data$PostScore ~ data$PreScore + data$EXP + data$PreScore:data$EXP, data = data) # With Interaction
+      model <- lm(data$PostScore ~ data$PreScore + data$EXP, data = data) # Without Interaction
+      summary(model)
     
-  # Assumptions
-  #############
+    # Assumptions
+  ###############
     # Linearity
     
+      
     # Homoscedasticity
+      leveneTest(model)
+    
+  # Visualizations
+  ################
+    
+      
